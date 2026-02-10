@@ -1,0 +1,331 @@
+import pathlib
+
+from airflow.configuration import conf
+
+NVD_LOCAL_REPO = pathlib.Path(conf.get("opencve", "nvd_repo_path"))
+MITRE_LOCAL_REPO = pathlib.Path(conf.get("opencve", "mitre_repo_path"))
+REDHAT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "redhat_repo_path"))
+VULNRICHMENT_LOCAL_REPO = pathlib.Path(conf.get("opencve", "vulnrichment_repo_path"))
+KB_LOCAL_REPO = pathlib.Path(conf.get("opencve", "kb_repo_path"))
+
+REPORTS_RETENTION_MONTHS = int(conf.get("opencve", "reports_retention", fallback="12"))
+
+PRODUCT_SEPARATOR = "$PRODUCT$"
+
+CVE_UPSERT_PROCEDURE = """
+CALL cve_upsert(
+    %(cve)s, %(created)s, %(updated)s, %(description)s, %(title)s, %(metrics)s, %(vendors)s, %(weaknesses)s, %(changes)s
+);
+"""
+
+REPORT_UPSERT_PROCEDURE = """
+CALL report_upsert(
+    %(report)s, %(project)s, %(day)s, %(changes)s
+);
+"""
+
+VARIABLE_UPSERT_PROCEDURE = "CALL variable_upsert(%(p_name)s, %(p_value)s);"
+
+SQL_CHANGE_WITH_VENDORS = """
+SELECT
+  changes.id AS change_id,
+  changes.types AS change_types,
+  changes.path AS change_path,
+  cves.vendors AS cve_vendors,
+  cves.cve_id AS cve_id,
+  cves.metrics AS cve_metrics
+FROM
+  opencve_cves AS cves
+  JOIN opencve_changes AS changes ON cves.id = changes.cve_id
+WHERE
+  changes.created_at >= %(start)s
+  AND
+  changes.created_at <= %(end)s;
+"""
+
+SQL_PROJECT_WITH_SUBSCRIPTIONS = """
+SELECT
+  id,
+  subscriptions
+FROM
+  opencve_projects
+WHERE
+  (active = 't')
+  AND
+  (
+    subscriptions->'vendors' ?| %(vendors)s
+    OR subscriptions->'products' ?| %(products)s
+  );
+"""
+
+SQL_PROJECT_WITH_NOTIFICATIONS = """
+SELECT
+  projects.id,
+  projects.name,
+  organizations.name,
+  notifications.name,
+  notifications.type,
+  notifications.configuration
+FROM
+  opencve_notifications AS notifications
+  JOIN opencve_projects AS projects ON projects.id = notifications.project_id
+  JOIN opencve_organizations AS organizations ON organizations.id = projects.organization_id
+WHERE
+  is_enabled = 't'
+  AND projects.id IN %(projects)s;
+"""
+
+SQL_CHANGE_WITH_CVE = """
+SELECT
+  changes.id,
+  cves.cve_id,
+  cves.summary,
+  cves.cvss,
+FROM
+  opencve_cves AS cves
+  JOIN opencve_changes AS changes ON cves.id = changes.cve_id
+WHERE
+  changes.created_at >= %(start)s
+  AND changes.created_at <= %(end)s;
+"""
+
+SQL_CVES_EVOLUTION_STATISTICS = """
+WITH yearly_counts AS (
+    SELECT
+        CAST(SPLIT_PART(cve_id, '-', 2) AS INTEGER) AS year,
+        COUNT(*) AS cve_count
+    FROM
+        opencve_cves
+    GROUP BY
+        CAST(SPLIT_PART(cve_id, '-', 2) AS INTEGER)
+    ORDER BY
+        year
+),
+cumulative_counts AS (
+    SELECT
+        year,
+        cve_count,
+        CAST(SUM(cve_count) OVER (ORDER BY year) AS INTEGER) AS cumulative_cve_count
+    FROM
+        yearly_counts
+)
+SELECT
+    year,
+    cve_count AS "CVEs for Year",
+    cumulative_cve_count AS "Cumulative CVEs"
+FROM
+    cumulative_counts
+ORDER BY
+    year;
+"""
+
+SQL_CVSS_ROUNDED_SCORES = """
+SELECT
+    CAST(FLOOR((metrics->'{metric}'->'data'->>'score')::NUMERIC) AS INTEGER) AS score_round,
+    COUNT(*) AS cve_count
+FROM opencve_cves
+WHERE metrics->'{metric}'->'data'->>'score' IS NOT NULL
+GROUP BY score_round
+ORDER BY score_round;
+"""
+
+SQL_CVSS_CATEGORIZED_SCORES = """
+SELECT
+    CASE
+        WHEN (metrics->'{metric}'->'data'->>'score')::NUMERIC BETWEEN 0 AND 3.9 THEN 'Low'
+        WHEN (metrics->'{metric}'->'data'->>'score')::NUMERIC BETWEEN 4.0 AND 6.9 THEN 'Medium'
+        WHEN (metrics->'{metric}'->'data'->>'score')::NUMERIC BETWEEN 7.0 AND 8.9 THEN 'High'
+        WHEN (metrics->'{metric}'->'data'->>'score')::NUMERIC BETWEEN 9.0 AND 10 THEN 'Critical'
+    END AS score_category,
+    COUNT(*) AS cve_count
+FROM opencve_cves
+WHERE metrics->'{metric}'->'data'->>'score' IS NOT NULL
+GROUP BY score_category
+ORDER BY score_category;
+"""
+
+SQL_CVES_TOP_VENDORS = """
+SELECT
+    vendor,
+    COUNT(*) AS cve_count
+FROM (
+    SELECT
+        jsonb_array_elements_text(vendors) AS vendor
+    FROM
+        opencve_cves
+) subquery
+WHERE vendor NOT LIKE '%$PRODUCT$%'
+GROUP BY vendor
+ORDER BY cve_count DESC
+LIMIT 10;
+"""
+
+SQL_CVES_TOP_PRODUCTS = """
+SELECT
+    product,
+    COUNT(*) AS cve_count
+FROM (
+    SELECT
+        SPLIT_PART(vendor, '$PRODUCT$', 2) AS product
+    FROM (
+        SELECT
+            jsonb_array_elements_text(vendors) AS vendor
+        FROM
+            opencve_cves
+    ) subquery
+    WHERE vendor LIKE '%$PRODUCT$%'
+) product_subquery
+GROUP BY product
+ORDER BY cve_count DESC
+LIMIT 10;
+"""
+
+SQL_CVES_COUNT_LAST_DAYS = """
+SELECT
+    -- Current count
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 day') AS last_24h,
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS last_7_days,
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') AS last_30_days,
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '90 days') AS last_90_days,
+
+    -- Previous period
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '2 days' AND created_at < NOW() - INTERVAL '1 day') AS prev_24h,
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') AS prev_7_days,
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days') AS prev_30_days,
+    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '180 days' AND created_at < NOW() - INTERVAL '90 days') AS prev_90_days,
+
+    -- Percentage progress
+    CASE
+        WHEN COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '2 days' AND created_at < NOW() - INTERVAL '1 day') = 0 THEN NULL
+        ELSE ROUND((COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 day')::numeric /
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '2 days' AND created_at < NOW() - INTERVAL '1 day') - 1) * 100, 2)
+    END AS pct_change_24h,
+    CASE
+        WHEN COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') = 0 THEN NULL
+        ELSE ROUND((COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::numeric /
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '14 days' AND created_at < NOW() - INTERVAL '7 days') - 1) * 100, 2)
+    END AS pct_change_7_days,
+    CASE
+        WHEN COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days') = 0 THEN NULL
+        ELSE ROUND((COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::numeric /
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days') - 1) * 100, 2)
+    END AS pct_change_30_days,
+    CASE
+        WHEN COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '180 days' AND created_at < NOW() - INTERVAL '90 days') = 0 THEN NULL
+        ELSE ROUND((COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '90 days')::numeric /
+                    COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '180 days' AND created_at < NOW() - INTERVAL '90 days') - 1) * 100, 2)
+    END AS pct_change_90_days
+FROM
+    opencve_cves;
+"""
+
+
+SQL_REPORTS_CVES_BY_DAY = """
+WITH distinct_cves AS (
+  SELECT DISTINCT ON (reports.id, cves.cve_id)
+    reports.id AS report_id,
+    cves.cve_id,
+    (cves.metrics->'cvssV3_1'->'data'->>'score')::float AS score
+  FROM
+    opencve_reports AS reports
+    JOIN opencve_reports_changes AS rc ON reports.id = rc.report_id
+    JOIN opencve_changes AS changes ON rc.change_id = changes.id
+    JOIN opencve_cves AS cves ON changes.cve_id = cves.id
+  WHERE
+    reports.day = %(day)s
+  ORDER BY
+    reports.id,
+    cves.cve_id,
+    (cves.metrics->'cvssV3_1'->'data'->>'score')::float DESC NULLS LAST
+),
+
+ranked_cves AS (
+  SELECT
+    report_id,
+    cve_id,
+    score,
+    ROW_NUMBER() OVER (
+      PARTITION BY report_id
+      ORDER BY score DESC NULLS LAST, cve_id ASC
+    ) AS rank
+  FROM distinct_cves
+),
+
+top_cves AS (
+  SELECT
+    report_id,
+    TO_JSONB(ARRAY_AGG(cve_id ORDER BY score DESC NULLS LAST, cve_id ASC)) AS cve_ids
+  FROM ranked_cves
+  WHERE rank <= 50
+  GROUP BY report_id
+),
+
+total_count AS (
+  SELECT
+    report_id,
+    COUNT(*) AS total_cve_count
+  FROM distinct_cves
+  GROUP BY report_id
+),
+
+score_distribution AS (
+  SELECT
+    report_id,
+    JSONB_AGG(
+      jsonb_build_object(
+        'score', score,
+        'count', count
+      ) ORDER BY score DESC NULLS LAST
+    ) AS score_distribution
+  FROM (
+    SELECT
+      report_id,
+      score,
+      COUNT(*) AS count
+    FROM distinct_cves
+    GROUP BY report_id, score
+  ) AS sub
+  GROUP BY report_id
+)
+
+SELECT
+  t.report_id,
+  t.cve_ids,
+  tc.total_cve_count,
+  sd.score_distribution
+FROM top_cves t
+JOIN total_count tc ON t.report_id = tc.report_id
+JOIN score_distribution sd ON t.report_id = sd.report_id;
+"""
+
+SQL_UPDATE_REPORT_AI_SUMMARY = """
+UPDATE opencve_reports
+SET ai_summary = %(ai_summary)s
+WHERE id = %(report_id)s;
+"""
+
+REPORTS_EXPIRED_SELECT = """
+SELECT
+  r.id
+FROM
+  opencve_reports r
+WHERE
+  r.created_at < now() - make_interval(months => %(retention_months)s)
+"""
+
+SQL_DELETE_EXPIRED_REPORTS = """
+WITH expired AS (
+  {expired_select}
+),
+deleted_changes AS (
+  DELETE FROM opencve_reports_changes rc
+  USING expired e
+  WHERE rc.report_id = e.id
+  RETURNING rc.report_id
+)
+DELETE FROM opencve_reports r
+USING expired e
+WHERE r.id = e.id;
+""".format(
+    expired_select=REPORTS_EXPIRED_SELECT.strip()
+)

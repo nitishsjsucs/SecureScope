@@ -1,0 +1,122 @@
+name: Tests
+on: [push, pull_request]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+          architecture: x64
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+
+  tests-web:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: opencve
+          POSTGRES_PASSWORD: opencve
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Install requirements
+        run: |
+          cd web
+          cp opencve/conf/settings.py.example opencve/conf/settings.py
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r tests/requirements.txt
+      - name: Display packages version
+        run: |
+          python -c "import sys; print(sys.version)"
+          pip freeze
+      - name: Execute tests
+        env:
+          DJANGO_SETTINGS_MODULE: opencve.conf.settings
+          OPENCVE_DATABASE_URL: postgresql://opencve:opencve@localhost:5432/opencve
+        run: |
+          cd web
+          python manage.py check
+          pytest tests/ -v
+  tests-scheduler:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    services:
+      postgres_web:
+        image: postgres
+        env:
+          POSTGRES_USER: opencve
+          POSTGRES_PASSWORD: opencve
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis_web:
+        image: redis/redis-stack
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - name: Git checkout
+        uses: actions/checkout@v4
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Init web database
+        run: |
+          cd web
+          cp opencve/conf/settings.py.example opencve/conf/settings.py
+          python -m venv venv_web
+          source venv_web/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          python manage.py migrate
+          deactivate
+        env:
+          DJANGO_SETTINGS_MODULE: opencve.conf.settings
+          OPENCVE_DATABASE_URL: postgresql://opencve:opencve@localhost:5432/opencve
+      - name: Install scheduler requirements
+        run: |
+          cd scheduler
+          python -m venv venv_scheduler
+          source venv_scheduler/bin/activate
+          pip install -r requirements.txt
+          pip install pytest==8.3.2
+      - name: Execute tests
+        run: |
+          cd scheduler
+          source venv_scheduler/bin/activate
+          pytest tests/ -v

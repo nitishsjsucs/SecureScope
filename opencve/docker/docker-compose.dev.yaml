@@ -1,0 +1,8 @@
+# OPENCVE DOCKER COMPOSE (DEV)
+---
+services:
+  webserver:
+    volumes:
+      - ../web:/app/opencve/web
+    environment:
+      GUNICORN_CMD_ARGS: "${GUNICORN_CMD_ARGS:-} --reload"

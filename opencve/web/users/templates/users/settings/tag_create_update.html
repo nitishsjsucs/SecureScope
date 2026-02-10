@@ -1,0 +1,12 @@
+{% extends 'users/settings/base_settings.html' %}
+{% load crispy_forms_tags %}
+
+{% block content_settings %}
+
+<div class="row">
+  <div class="col-md-12">
+    {% crispy form %}
+  </div>
+</div>
+
+{% endblock %}

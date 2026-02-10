@@ -1,0 +1,21 @@
+{% extends 'users/base.html' %}
+
+{% load crispy_forms_tags %}
+
+{% block title %}Join - {{ block.super }}{% endblock %}
+
+{% block header %}Register a new membership{% endblock %}
+
+{% block content%}
+
+{% include 'social_buttons.html' %}
+
+{% crispy form %}
+
+{% endblock %}
+
+{% block links %}
+<hr />
+<span>Already have an account?</span>
+<a href="{% url 'account_login' %}">Sign in</a>
+{% endblock %}

@@ -1,0 +1,123 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Groww-inspired color palette */
+:root {
+  /* Groww Green - Primary accent */
+  --groww-green: #00D09C;
+  --groww-green-dark: #00B386;
+  --groww-green-light: #E8FBF6;
+  
+  /* Groww Red - For negative/critical */
+  --groww-red: #EB5B3C;
+  --groww-red-light: #FEF0ED;
+  
+  /* Neutral colors */
+  --groww-text-primary: #44475B;
+  --groww-text-secondary: #7C7E8C;
+  --groww-text-muted: #A9ABB1;
+  --groww-border: #E8E8EB;
+  --groww-bg: #FFFFFF;
+  --groww-bg-secondary: #F5F5F6;
+  
+  --radius: 0.5rem;
+  --background: #FFFFFF;
+  --foreground: #44475B;
+  --card: #FFFFFF;
+  --card-foreground: #44475B;
+  --popover: #FFFFFF;
+  --popover-foreground: #44475B;
+  --primary: #00D09C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5F5F6;
+  --secondary-foreground: #44475B;
+  --muted: #F5F5F6;
+  --muted-foreground: #7C7E8C;
+  --accent: #E8FBF6;
+  --accent-foreground: #00B386;
+  --destructive: #EB5B3C;
+  --border: #E8E8EB;
+  --input: #E8E8EB;
+  --ring: #00D09C;
+  --chart-1: #00D09C;
+  --chart-2: #5367FF;
+  --chart-3: #FFB800;
+  --chart-4: #EB5B3C;
+  --chart-5: #9B59B6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  
+  /* Groww custom colors */
+  --color-groww-green: var(--groww-green);
+  --color-groww-green-dark: var(--groww-green-dark);
+  --color-groww-green-light: var(--groww-green-light);
+  --color-groww-red: var(--groww-red);
+  --color-groww-red-light: var(--groww-red-light);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Display font utility */
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+/* Groww-style scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D1D6;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A9ABB1;
+}

@@ -1,0 +1,6 @@
+# SexySecure CVE Import Script Dependencies
+pymongo[srv]>=4.6.0
+gitpython>=3.1.40
+python-dotenv>=1.0.0
+tqdm>=4.66.0
+httpx>=0.25.0

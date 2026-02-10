@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+dist/
+opencve.egg-info/
+
+# Environments
+.env
+.venv
+env/
+venv/
+docker/.env
+
+# Celery
+celerybeat-schedule.db
+
+# Editors
+.vscode/
+.idea/
+
+# Tests and coverage
+.coverage
+htmlcov/
+
+# OpenCVE v2
+web/opencve/conf/.env
+web/opencve/conf/settings.py
+scheduler/logs/
+scheduler/airflow.cfg
+scheduler/standalone_admin_password.txt
+scheduler/airflow-webserver.pid
+web/.pytest_cache/
+web/emails/
+docker/conf/opencve.conf.template
+docker/conf/default.conf.template
+
+# Ignore content of previews, but not the folder itself
+scheduler/tests/previews/*
+!scheduler/tests/previews/.gitkeep

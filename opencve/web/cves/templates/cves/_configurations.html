@@ -1,0 +1,103 @@
+{% load static %}
+{% load opencve_extras %}
+
+<h2 class="page-header">Affected Vendors & Products</h2>
+
+<div class="nav-tabs-custom nav-tabs-primary">
+    <ul class="nav nav-tabs">
+        <li class="active">
+            <a href="#all" data-toggle="tab">All</a>
+        </li>
+        <li>
+            <a href="#nvd" data-toggle="tab"> <img src="{% static 'img/nvd-icon.png' %}" style="margin-top: -2px; width: 32px;" class="provider-icon" alt="cve-icon" /> CPE Configurations</a>
+        </li>
+        <li>
+            <a href="#redhat" data-toggle="tab"> <img src="{% static 'img/redhat-icon.png' %}" style="margin-top: -2px; width: 20px;" class="provider-icon" alt="cve-icon" /> Affected Packages</a>
+        </li>
+        <li>
+            <a href="#enrichment" data-toggle="tab"> Enrichment</a>
+        </li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane active" id="all">
+            {% include "cves/includes/vendors_products_table.html" with vendors_dict=vendors vendors_data_dict=vendors_data %}
+        </div>
+        <div class="tab-pane" id="nvd">
+            {% if cve.nvd_json and cve.nvd_json.configurations %}
+
+            {% for conf in cve.nvd_json.configurations %}
+            <p><strong>Configuration {{ forloop.counter }}</strong> <a class="pointer config-toggle"
+                                                                       id="config-{{ forloop.counter }}">[-]</a></p>
+            <table class="table table-configuration" id="config-{{ forloop.counter }}-table">
+                <tr>
+                    {% if conf.operator == "AND" %}
+                    <td class="col-md-1 rowspaned">AND</td>
+                    {% endif %}
+                    <td class="col-md-11 and">
+                        {% for node in conf.nodes %}
+                        <table class="table table-bordered no-margin-bottom">
+                            {% for cpe in node.cpeMatch %}
+                            <tr>
+                                {% if forloop.counter == 1 and node.cpeMatch|length > 1 %}
+                                <td class="col-md-1 rowspaned" rowspan="{{ node.cpeMatch|length }}">OR</td>
+                                {% endif %}
+                                <td>{{ cpe.criteria }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                        {% endfor %}
+                    </td>
+                </tr>
+            </table>
+            <hr/>
+            {% endfor %}
+
+            {% else %}
+            <p class="alert alert-info">No data.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="redhat">
+            {% if cve.redhat_json and cve.redhat_json.affected_release %}
+            {% regroup cve.redhat_json.affected_release by product_name as packages %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <th>Package</th>
+                    <th>CPE</th>
+                    <th>Advisory</th>
+                    <th>Released Date</th>
+                </thead>
+                <tbody>
+                    {% for package in packages %}
+                    <tr>
+                        <td colspan="4" class="td-grouper"><strong>{{ package.grouper }}</strong></td>
+                    </tr>
+                    {% for release in package.list %}
+                    <tr>
+                        <td>{{ release.package }}</td>
+                        <td>{{ release.cpe }}</td>
+                        <td><a href="https://access.redhat.com/errata/{{ release.advisory }}" target="_blank">{{ release.advisory }}</a></td>
+                        <td>{{ release.release_date }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+
+
+                </tbody>
+            </table>
+            {% else %}
+            <p class="alert alert-info">No data.</p>
+            {% endif %}
+        </div>
+        <div class="tab-pane" id="enrichment">
+            {% if cve.enrichment_json %}
+            <p class="alert alert-info">
+                <strong>Enrichment</strong> is a feature that uses AI to automatically link vendors and products to CVEs. <a href="https://github.com/opencve/opencve-enrichment/tree/main" target="_blank" rel="noopener">Learn more on GitHub</a>.
+            </p>
+            {% include "cves/includes/vendors_products_table.html" with vendors_dict=enrichment_vendors vendors_data_dict=enrichment_vendors_data %}
+            {% else %}
+            <p class="alert alert-info">No data.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

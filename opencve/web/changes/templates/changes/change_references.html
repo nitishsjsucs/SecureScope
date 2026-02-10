@@ -1,0 +1,18 @@
+<tr>
+    {% if not hide_type %}
+    <td class="col-md-2">References</td>
+    {% endif %}
+    <td class="col-md-5">
+        <ul>
+        {% for item in event.details.removed %}
+            <li><a href="{{ item }}" target="_blank">{{ item }}</a></li>
+        {% endfor %}
+        </ul>
+    <td class="col-md-5">
+        <ul>
+        {% for item in event.details.added %}
+            <li><a href="{{ item }}" target="_blank">{{ item }}</a></li>
+        {% endfor %}
+        </ul>
+    </td>
+</tr>
