@@ -1,0 +1,117 @@
+VENDORED THIRD-PARTY SOFTWARE — OpenCVE
+=======================================
+
+Everything in this directory is a copy of OpenCVE, an existing open project.
+It is NOT original work of SecureScope. It has been modified locally; the
+modifications are listed below.
+
+    Upstream project : OpenCVE — Vulnerability Intelligence Platform
+    Upstream source  : https://github.com/opencve/opencve
+    Homepage         : https://www.opencve.io/
+    Copyright        : (c) 2020 Opencve.io
+    License          : Business Source License 1.1 — full text in ./LICENSE
+    Change Date      : 2030-01-13  ->  Apache License, Version 2.0
+    Vendored from    : upstream `master`, best match at commit e991466
+                       (2026-02-02), a post-v2.3.0 snapshot. The ./VERSION
+                       file reads 2.3.0.
+
+The Business Source License 1.1 is a source-available license and is NOT an
+open source license. Read ./LICENSE before using, deploying or
+redistributing this directory. In particular: non-production use is granted
+outright; production use is granted only under the Additional Use Grant,
+which excludes offering this software as a commercial "Security Monitoring
+and Alerting Service" to third parties. Derivative works of this directory
+stay under BUSL-1.1.
+
+OpenCVE's name and logo are trademarks of the Licensor; BUSL-1.1 grants no
+rights in them. Local branding replaces the OpenCVE wordmark and logo with
+"Vulnerability Tracker" for that reason, not to obscure authorship. This
+NOTICE, the footer credit in `web/templates/base.html` and the credit in
+`scheduler/dags/templates/email_notification.html` record that authorship.
+
+
+Local modifications
+-------------------
+
+Relative to upstream commit e991466, the following files were changed. No
+other file in this directory differs from upstream.
+
+REST API (to serve the SecureScope `vulntracker-ui` frontend)
+
+  web/cves/resources.py
+      - Added `apply_cve_ordering()`: honours a `sort` query parameter for
+        `updated_at` / `created_at`, and adds a `cvss` sort that annotates
+        the queryset with the best available CVSS score, preferring
+        v4.0 > v3.1 > v3.0 > v2.0 and defaulting to 0.0.
+      - `CveViewSet.get_queryset()` routes through that ordering helper
+        instead of the fixed `-updated_at` ordering.
+      - Set `permission_classes = [AllowAny]` on the Cve, Weakness, Vendor,
+        VendorCve, Product, ProductCve and WeaknessCve view sets, making
+        those read-only endpoints reachable without authentication.
+        *** This is a deliberate relaxation of upstream's access control.
+        Do not expose this instance publicly without restoring it. ***
+
+  web/cves/serializers.py
+      - `CveListSerializer` additionally returns `metrics` and `vendors`,
+        so the dashboard can render severity and vendor data from the list
+        endpoint without an extra round trip per CVE.
+
+  web/opencve/conf/base.py
+      - Added `corsheaders` to INSTALLED_APPS and `CorsMiddleware` to
+        MIDDLEWARE; set `CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]`
+        and `CORS_ALLOW_CREDENTIALS = True` for the local Next.js frontend.
+      - Changed the default `DATABASE_URL` to a local Postgres DSN.
+
+  web/opencve/conf/__init__.py
+      - Added (empty package marker).
+
+Local development plumbing
+
+  docker/docker-compose.yaml       Publish Postgres on host port 5432.
+  docker/docker-compose.dev.yaml   Added.
+  docker-compose.dev.yml           Added — standalone Postgres + Redis style
+                                   dev stack named `vulntracker-db`.
+
+Bug fix
+
+  web/cves/views.py
+      - Statistics view reads `statistics_cves_count_last_days` with
+        `.get(..., [])` instead of direct indexing, so the page does not
+        raise when the statistic has not been computed yet.
+
+Presentation / de-branding (no functional change)
+
+  web/templates/base.html                       OpenCVE wordmark -> "VulnTracker";
+                                                sidebar icons changed; footer
+                                                credit reworded.
+  web/templates/base_empty.html                 title.
+  web/templates/account/base.html               title + logo.
+  web/templates/account/signup.html             title.
+  web/templates/account/email_confirm.html      title.
+  web/templates/socialaccount/signup.html       title.
+  web/users/templates/users/base.html           title + logo.
+  web/onboarding/templates/onboarding/index.html  logo -> text wordmark;
+                                                welcome copy.
+  web/cves/templates/cves/cve_detail.html       title; "OpenCVE Enrichment"
+                                                tab relabelled "Enrichment".
+  web/cves/templates/cves/cve_list.html         title.
+  web/cves/templates/cves/statistics.html       title / meta description /
+                                                navbar title.
+  web/cves/templates/cves/_configurations.html  Removed the "Mitre" affected
+                                                vendors/products tab and its
+                                                table (69 lines); relabelled
+                                                the enrichment tab.
+  web/static/css/custom.css                     Replaced the OpenCVE skin with
+                                                a smaller custom theme
+                                                (1210 lines -> 234).
+  scheduler/dags/templates/email_notification.html
+  scheduler/dags/templates/email_test.html      Subject line and footer credit.
+
+
+Keeping this copy honest
+------------------------
+
+If you update this directory from upstream, update the commit reference and
+the modification list above. If a modification here is genuinely useful to
+OpenCVE users, consider contributing it upstream rather than only carrying
+it as a local patch.

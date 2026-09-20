@@ -1,0 +1,75 @@
+SecureScope — third-party notices
+=================================
+
+This file lists third-party software redistributed inside this repository,
+as distinct from code written for SecureScope. See `LICENSE` for the scope
+of the MIT license that covers the original code.
+
+
+1. OpenCVE  —  `opencve/`  (480 of 639 tracked files)
+-----------------------------------------------------
+
+`opencve/` is a vendored, locally modified copy of the OpenCVE Vulnerability
+Intelligence Platform. It is not original work of this project.
+
+    Upstream project : OpenCVE
+    Upstream source  : https://github.com/opencve/opencve
+    Homepage         : https://www.opencve.io/
+    Copyright        : (c) 2020 Opencve.io
+    Vendored version : VERSION file reads 2.3.0; the tree matches upstream
+                       `master` at commit e991466 (2026-02-02), i.e. a
+                       post-v2.3.0 development snapshot.
+    License          : Business Source License 1.1 (BUSL-1.1)
+                       full text: `opencve/LICENSE`
+
+IMPORTANT — BUSL-1.1 is a source-available license, NOT an open source
+license. Terms that apply to this directory and to any derivative of it:
+
+  * You may copy, modify, create derivative works, redistribute, and make
+    NON-PRODUCTION use of the Licensed Work.
+  * Additional Use Grant: production use is permitted provided you do not
+    use the Licensed Work for a "Security Monitoring and Alerting Service",
+    defined as a commercial offering that lets third parties (other than
+    your employees and contractors) directly benefit from its security
+    monitoring and alerting features. Operating SecureScope as such a
+    commercial service would require a commercial license from Opencve.io.
+  * Change Date 2030-01-13, after which this version converts to the
+    Apache License, Version 2.0.
+  * All copies and derivative works remain subject to BUSL-1.1, and the
+    license must be conspicuously displayed on each copy.
+  * No rights are granted in OpenCVE's trademarks or logos.
+
+Local modifications made to the vendored copy are listed in
+`opencve/NOTICE`.
+
+
+2. shadcn/ui  —  `vulntracker-ui/components/ui/`
+------------------------------------------------
+
+Seven UI primitives (badge, button, card, select, separator, skeleton,
+tabs) were generated into this repository by the shadcn/ui CLI, per
+`vulntracker-ui/components.json`. shadcn/ui is distributed under the MIT
+License and is intended to be copied into consuming projects.
+
+    Upstream : https://github.com/shadcn-ui/ui
+    License  : MIT
+
+These files build on Radix UI primitives, also MIT licensed
+(https://github.com/radix-ui/primitives).
+
+
+3. Runtime dependencies
+-----------------------
+
+Python and npm packages declared in `firecrawl/`, `opencve/web/requirements.txt`
+and `vulntracker-ui/package.json` are fetched at install time and are not
+redistributed in this repository. They remain under their own licenses.
+
+
+Note on directory naming
+------------------------
+
+The top-level `firecrawl/` directory is ORIGINAL SecureScope code. It is a
+client for the hosted Firecrawl API (https://api.firecrawl.dev) plus the
+collector/aggregator pipeline built on top of it. It does not contain any
+source from the Firecrawl project (https://github.com/firecrawl/firecrawl).

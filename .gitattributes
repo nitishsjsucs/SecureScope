@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Vendored third-party source: OpenCVE (BUSL-1.1), see opencve/NOTICE.
+# Marked so GitHub language stats and diffs do not present it as own work.
+opencve/** linguist-vendored
