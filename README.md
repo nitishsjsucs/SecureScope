@@ -215,19 +215,6 @@ python import_cves.py --full   # Full re-import
 
 ---
 
-## My Contributions
-
-- **CVE Intelligence Orchestrator** — Designed and built the async pipeline that coordinates 17 collectors, runs them in parallel groups, and generates daily intelligence reports with priority scoring.
-- **Deep Crawl Pipeline** — Implemented the search-then-scrape deep crawl strategy using Firecrawl, enabling extraction of CVE data from full page content beyond initial search results.
-- **Priority Scoring Algorithm** — Developed the weighted scoring system that considers CVSS severity, CISA KEV inclusion, exploit availability, social buzz velocity, and recency for vulnerability prioritization.
-- **AI Dependency Analyzer** — Built the OpenAI-powered multi-layer dependency analysis that detects direct and transitive dependencies across 10+ package managers from GitHub repository READMEs.
-- **CVE Import Pipeline** — Implemented the incremental CVE import system with source provenance tracking from the opencve-kb repository into MongoDB Atlas.
-- **OpenCVE Integration Layer** — Patched the vendored OpenCVE instance to serve the dashboard: CVSS-aware sorting across CVSS v4.0/v3.1/v3.0/v2.0 on the CVE API, an expanded list serializer, CORS wiring, and a dev `docker-compose` stack. Itemised in [`opencve/NOTICE`](opencve/NOTICE).
-
-Everything above sits on top of OpenCVE rather than replacing it; the vendored `opencve/` tree is upstream's work, not mine.
-
----
-
 ## License
 
 This repository is **dual-licensed by directory**. There is no single license for the whole tree.
